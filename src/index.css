@@ -1,7 +1,30 @@
-@import "tailwindcss";
+.phone-stage {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #E4EBE6;
+}
 
-@theme {
-  --color-brand-green: #1F4D3A;
-  --color-brand-orange: #C2682F;
-  --color-sage: #E4EBE6;
+.phone {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+@media (min-width: 640px) {
+  .phone {
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: auto;
+    height: min(800px, calc(100vh - 2rem));
+    height: min(800px, calc(100dvh - 2rem));
+    aspect-ratio: 390 / 800;
+    border: 10px solid #171717;
+    border-radius: 3rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  }
 }
