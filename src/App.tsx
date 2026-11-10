@@ -17,10 +17,12 @@ export default function App() {
   const [contributions] = useState(initialContributions)
   const members = initialMembers
 
+  const total = contributions.reduce((sum, c) => sum + c.amount, 0)
+
   return (
     <Layout screen={screen} goTo={setScreen}>
       {screen === 'join' && (
-        <Join goTo={setScreen} />
+        <Join goTo={setScreen} memberCount={members.length} total={total} />
       )}
       {screen === 'dashboard' && (
         <Dashboard

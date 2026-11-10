@@ -1,8 +1,13 @@
+import { formatKES } from '../format'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Screen } from '../types'
 
-type Props = { goTo: (screen: Screen) => void }
+type Props = {
+  goTo: (screen: Screen) => void
+  memberCount: number
+  total: number
+}
 
 type Errors = { name?: string; phone?: string }
 
@@ -20,7 +25,7 @@ function StallIcon() {
   )
 }
 
-export default function Join({ goTo }: Props) {
+export default function Join({ goTo, memberCount, total }: Props) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [errors, setErrors] = useState<Errors>({})
@@ -64,16 +69,14 @@ export default function Join({ goTo }: Props) {
           Save together. See every shilling.
         </p>
 
-        <div className="mt-8 grid grid-cols-2 gap-4">
-          <div className="rounded-2xl bg-orange-50 p-4 text-center">
-            <p className="text-3xl font-bold text-brand-orange">12</p>
-            <p className="text-sm text-neutral-600">members</p>
-          </div>
-          <div className="rounded-2xl bg-orange-50 p-4 text-center">
-            <p className="text-3xl font-bold text-brand-orange">KES 8,400</p>
-            <p className="text-sm text-neutral-600">saved together</p>
-          </div>
-        </div>
+        <div className="rounded-2xl bg-orange-50 p-4 text-center">
+  <p className="text-3xl font-bold text-brand-orange">{memberCount}</p>
+  <p className="text-sm text-neutral-600">members</p>
+</div>
+<div className="rounded-2xl bg-orange-50 p-4 text-center">
+  <p className="text-3xl font-bold text-brand-orange">{formatKES(total)}</p>
+  <p className="text-sm text-neutral-600">saved together</p>
+</div>
       </section>
 
       <form
