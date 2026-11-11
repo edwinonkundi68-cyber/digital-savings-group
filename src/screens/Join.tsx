@@ -1,7 +1,8 @@
-import { formatKES } from '../format'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Screen } from '../types'
+import { formatKES } from '../format'
+import { useAuth } from '../lib/authContext'
 
 type Props = {
   goTo: (screen: Screen) => void
@@ -9,7 +10,15 @@ type Props = {
   total: number
 }
 
-type Errors = { name?: string; phone?: string }
+type Mode = 'signup' | 'login'
+
+type Errors = {
+  name?: string
+  phone?: string
+  email?: string
+  password?: string
+  form?: string
+}
 
 function StallIcon() {
   return (
@@ -26,25 +35,66 @@ function StallIcon() {
 }
 
 export default function Join({ goTo, memberCount, total }: Props) {
+  const { signUp, signIn } = useAuth()
+  const [mode, setMode] = useState<Mode>('signup')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<Errors>({})
+  const [notice, setNotice] = useState('')
+  const [busy, setBusy] = useState(false)
 
-  function handleSubmit(e: FormEvent) {
+  const isSignup = mode === 'signup'
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    setNotice('')
     const newErrors: Errors = {}
 
-    if (name.trim().length < 2) {
-      newErrors.name = 'Please enter your name'
+    if (isSignup) {
+      if (name.trim().length < 2) newErrors.name = 'Please enter your name'
+      if (!/^(07|01)\d{8}$/.test(phone.replace(/\s/g, ''))) {
+        newErrors.phone = 'Enter a valid number, e.g. 0712 345 678'
+      }
     }
-    if (!/^(07|01)\d{8}$/.test(phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Enter a valid number, e.g. 0712 345 678'
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      newErrors.email = 'Enter a valid email address'
+    }
+    if (isSignup) {
+      const strong =
+        password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password)
+      if (!strong) {
+        newErrors.password = 'At least 8 characters, with a letter and a number'
+      }
+    } else if (password.length === 0) {
+      newErrors.password = 'Enter your password'
     }
 
     setErrors(newErrors)
-    if (Object.keys(newErrors).length === 0) {
-      goTo('dashboard')
+    if (Object.keys(newErrors).length > 0) return
+
+    setBusy(true)
+    const result = isSignup
+      ? await signUp({
+          fullName: name.trim(),
+          phone: phone.replace(/\s/g, ''),
+          email: email.trim(),
+          password,
+        })
+      : await signIn(email.trim(), password)
+    setBusy(false)
+
+    if (result.error) {
+      setErrors({ form: result.error })
+      return
     }
+    if (result.needsConfirmation) {
+      setNotice('Check your email to confirm your account, then log in.')
+      setMode('login')
+      return
+    }
+    goTo('dashboard')
   }
 
   const inputClass = (hasError: boolean) =>
@@ -52,6 +102,9 @@ export default function Join({ goTo, memberCount, total }: Props) {
     (hasError
       ? 'border-red-500'
       : 'border-neutral-200 focus:border-brand-green')
+
+  const fieldError = (msg?: string) =>
+    msg ? <p className="mt-1 text-sm font-bold text-red-600">{msg}</p> : null
 
   return (
     <div className="grid items-center gap-10 md:grid-cols-2">
@@ -69,14 +122,18 @@ export default function Join({ goTo, memberCount, total }: Props) {
           Save together. See every shilling.
         </p>
 
-        <div className="rounded-2xl bg-orange-50 p-4 text-center">
-  <p className="text-3xl font-bold text-brand-orange">{memberCount}</p>
-  <p className="text-sm text-neutral-600">members</p>
-</div>
-<div className="rounded-2xl bg-orange-50 p-4 text-center">
-  <p className="text-3xl font-bold text-brand-orange">{formatKES(total)}</p>
-  <p className="text-sm text-neutral-600">saved together</p>
-</div>
+        <div className="mt-8 grid grid-cols-2 gap-4">
+          <div className="rounded-2xl bg-orange-50 p-4 text-center">
+            <p className="text-3xl font-bold text-brand-orange">{memberCount}</p>
+            <p className="text-sm text-neutral-600">members</p>
+          </div>
+          <div className="rounded-2xl bg-orange-50 p-4 text-center">
+            <p className="text-3xl font-bold text-brand-orange">
+              {formatKES(total)}
+            </p>
+            <p className="text-sm text-neutral-600">saved together</p>
+          </div>
+        </div>
       </section>
 
       <form
@@ -84,46 +141,104 @@ export default function Join({ goTo, memberCount, total }: Props) {
         noValidate
         className="rounded-3xl bg-sage p-6 sm:p-8"
       >
-        <h2 className="text-2xl font-bold text-brand-green">Join the group</h2>
+        <h2 className="text-2xl font-bold text-brand-green">
+          {isSignup ? 'Join the group' : 'Log in'}
+        </h2>
 
-        <label htmlFor="name" className="mt-6 block font-bold text-brand-green">
-          Your name
-        </label>
-        <input
-          id="name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Mama Wanjiku"
-          autoComplete="name"
-          className={inputClass(!!errors.name)}
-        />
-        {errors.name && (
-          <p className="mt-1 text-sm font-bold text-red-600">{errors.name}</p>
+        {notice && (
+          <p className="mt-4 rounded-xl bg-white p-3 text-sm font-bold text-brand-green">
+            {notice}
+          </p>
         )}
 
-        <label htmlFor="phone" className="mt-5 block font-bold text-brand-green">
-          Phone number
+        {isSignup && (
+          <>
+            <label htmlFor="name" className="mt-6 block font-bold text-brand-green">
+              Your name
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Mama Wanjiku"
+              autoComplete="name"
+              className={inputClass(!!errors.name)}
+            />
+            {fieldError(errors.name)}
+
+            <label htmlFor="phone" className="mt-5 block font-bold text-brand-green">
+              Phone number
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              inputMode="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="07XX XXX XXX"
+              autoComplete="tel"
+              className={inputClass(!!errors.phone)}
+            />
+            {fieldError(errors.phone)}
+          </>
+        )}
+
+        <label
+          htmlFor="email"
+          className={'block font-bold text-brand-green ' + (isSignup ? 'mt-5' : 'mt-6')}
+        >
+          Email
         </label>
         <input
-          id="phone"
-          type="tel"
-          inputMode="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="07XX XXX XXX"
-          autoComplete="tel"
-          className={inputClass(!!errors.phone)}
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          autoComplete="email"
+          className={inputClass(!!errors.email)}
         />
-        {errors.phone && (
-          <p className="mt-1 text-sm font-bold text-red-600">{errors.phone}</p>
+        {fieldError(errors.email)}
+
+        <label htmlFor="password" className="mt-5 block font-bold text-brand-green">
+          Password
+        </label>
+        <input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder={isSignup ? 'At least 8 characters' : 'Your password'}
+          autoComplete={isSignup ? 'new-password' : 'current-password'}
+          className={inputClass(!!errors.password)}
+        />
+        {fieldError(errors.password)}
+
+        {errors.form && (
+          <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-700">
+            {errors.form}
+          </p>
         )}
 
         <button
           type="submit"
-          className="mt-8 w-full rounded-2xl bg-brand-green py-4 text-xl font-bold text-white hover:opacity-90"
+          disabled={busy}
+          className="mt-8 w-full rounded-2xl bg-brand-green py-4 text-xl font-bold text-white hover:opacity-90 disabled:opacity-60"
         >
-          Join the group
+          {busy ? 'Please wait...' : isSignup ? 'Join the group' : 'Log in'}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMode(isSignup ? 'login' : 'signup')
+            setErrors({})
+            setNotice('')
+          }}
+          className="mt-4 w-full text-center font-bold text-brand-green underline"
+        >
+          {isSignup ? 'Already a member? Log in' : 'New here? Join the group'}
         </button>
       </form>
     </div>

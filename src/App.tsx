@@ -5,6 +5,8 @@ import Dashboard from './screens/Dashboard'
 import Contribute from './screens/Contribute'
 import History from './screens/History'
 import type { Screen } from './types'
+import AuthProvider from './lib/AuthProvider'
+import { useAuth } from './lib/authContext'
 import {
   GROUP_GOAL,
   GOAL_LABEL,
@@ -12,19 +14,34 @@ import {
   initialContributions,
 } from './data/group'
 
-export default function App() {
+function AppContent() {
+  const { session, loading } = useAuth()
   const [screen, setScreen] = useState<Screen>('join')
   const [contributions] = useState(initialContributions)
   const members = initialMembers
 
   const total = contributions.reduce((sum, c) => sum + c.amount, 0)
 
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-sage font-bold text-brand-green">
+        Loading...
+      </div>
+    )
+  }
+
+  const current: Screen = session
+    ? screen === 'join'
+      ? 'dashboard'
+      : screen
+    : 'join'
+
   return (
-    <Layout screen={screen} goTo={setScreen}>
-      {screen === 'join' && (
+    <Layout screen={current} goTo={setScreen}>
+      {current === 'join' && (
         <Join goTo={setScreen} memberCount={members.length} total={total} />
       )}
-      {screen === 'dashboard' && (
+      {current === 'dashboard' && (
         <Dashboard
           goTo={setScreen}
           members={members}
@@ -33,8 +50,16 @@ export default function App() {
           goalLabel={GOAL_LABEL}
         />
       )}
-      {screen === 'contribute' && <Contribute goTo={setScreen} />}
-      {screen === 'history' && <History goTo={setScreen} />}
+      {current === 'contribute' && <Contribute goTo={setScreen} />}
+      {current === 'history' && <History goTo={setScreen} />}
     </Layout>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 }
