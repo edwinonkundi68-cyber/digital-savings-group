@@ -1,14 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import type { Screen } from '../types'
-import { formatKES } from '../format'
 import { useAuth } from '../lib/authContext'
-
-type Props = {
-  goTo: (screen: Screen) => void
-  memberCount: number
-  total: number
-}
 
 type Mode = 'signup' | 'login'
 
@@ -34,7 +26,13 @@ function StallIcon() {
   )
 }
 
-export default function Join({ goTo, memberCount, total }: Props) {
+const trustPoints = [
+  { title: 'Your password is your key', text: 'Only members can open the group.' },
+  { title: 'Every payment is recorded', text: 'Nothing is changed quietly.' },
+  { title: 'The same numbers for everyone', text: 'Every member sees the group total.' },
+]
+
+export default function Join() {
   const { signUp, signIn } = useAuth()
   const [mode, setMode] = useState<Mode>('signup')
   const [name, setName] = useState('')
@@ -92,9 +90,7 @@ export default function Join({ goTo, memberCount, total }: Props) {
     if (result.needsConfirmation) {
       setNotice('Check your email to confirm your account, then log in.')
       setMode('login')
-      return
     }
-    goTo('dashboard')
   }
 
   const inputClass = (hasError: boolean) =>
@@ -122,18 +118,14 @@ export default function Join({ goTo, memberCount, total }: Props) {
           Save together. See every shilling.
         </p>
 
-        <div className="mt-8 grid grid-cols-2 gap-4">
-          <div className="rounded-2xl bg-orange-50 p-4 text-center">
-            <p className="text-3xl font-bold text-brand-orange">{memberCount}</p>
-            <p className="text-sm text-neutral-600">members</p>
-          </div>
-          <div className="rounded-2xl bg-orange-50 p-4 text-center">
-            <p className="text-3xl font-bold text-brand-orange">
-              {formatKES(total)}
-            </p>
-            <p className="text-sm text-neutral-600">saved together</p>
-          </div>
-        </div>
+        <ul className="mt-8 space-y-3 text-left">
+          {trustPoints.map((point) => (
+            <li key={point.title} className="rounded-2xl bg-orange-50 p-4">
+              <p className="font-bold text-brand-orange">{point.title}</p>
+              <p className="text-sm text-neutral-600">{point.text}</p>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <form

@@ -7,20 +7,51 @@ import History from './screens/History'
 import type { Screen } from './types'
 import AuthProvider from './lib/AuthProvider'
 import { useAuth } from './lib/authContext'
-import {
-  GROUP_GOAL,
-  GOAL_LABEL,
-  initialMembers,
-  initialContributions,
-} from './data/group'
+import { useGroupData } from './lib/useGroupData'
+
+function MemberArea({ userId }: { userId: string }) {
+  const [screen, setScreen] = useState<Screen>('dashboard')
+  const { state, reload } = useGroupData()
+
+  return (
+    <Layout screen={screen} goTo={setScreen}>
+      {screen === 'dashboard' && state.status === 'loading' && (
+        <p className="font-bold text-brand-green">Loading...</p>
+      )}
+
+      {screen === 'dashboard' && state.status === 'error' && (
+        <div>
+          <p className="font-bold text-red-700">
+            Could not load the group data: {state.message}
+          </p>
+          <button
+            onClick={reload}
+            className="mt-4 rounded-2xl bg-brand-green px-6 py-3 font-bold text-white"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {screen === 'dashboard' && state.status === 'ready' && (
+        <Dashboard
+          goTo={setScreen}
+          members={state.data.members}
+          contributions={state.data.contributions}
+          goal={state.data.goal}
+          goalLabel={state.data.goalLabel}
+          currentUserId={userId}
+        />
+      )}
+
+      {screen === 'contribute' && <Contribute goTo={setScreen} />}
+      {screen === 'history' && <History goTo={setScreen} />}
+    </Layout>
+  )
+}
 
 function AppContent() {
   const { session, loading } = useAuth()
-  const [screen, setScreen] = useState<Screen>('join')
-  const [contributions] = useState(initialContributions)
-  const members = initialMembers
-
-  const total = contributions.reduce((sum, c) => sum + c.amount, 0)
 
   if (loading) {
     return (
@@ -30,30 +61,15 @@ function AppContent() {
     )
   }
 
-  const current: Screen = session
-    ? screen === 'join'
-      ? 'dashboard'
-      : screen
-    : 'join'
+  if (!session) {
+    return (
+      <Layout screen="join" goTo={() => {}}>
+        <Join />
+      </Layout>
+    )
+  }
 
-  return (
-    <Layout screen={current} goTo={setScreen}>
-      {current === 'join' && (
-        <Join goTo={setScreen} memberCount={members.length} total={total} />
-      )}
-      {current === 'dashboard' && (
-        <Dashboard
-          goTo={setScreen}
-          members={members}
-          contributions={contributions}
-          goal={GROUP_GOAL}
-          goalLabel={GOAL_LABEL}
-        />
-      )}
-      {current === 'contribute' && <Contribute goTo={setScreen} />}
-      {current === 'history' && <History goTo={setScreen} />}
-    </Layout>
-  )
+  return <MemberArea key={session.user.id} userId={session.user.id} />
 }
 
 export default function App() {

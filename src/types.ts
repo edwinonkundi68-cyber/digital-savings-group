@@ -1,13 +1,14 @@
 export type Screen = 'join' | 'dashboard' | 'contribute' | 'history'
 
 export type Member = {
-  id: number
+  id: string
   name: string
 }
 
 export type Contribution = {
   id: number
-  memberId: number
+  memberId: string
   amount: number
-  date: string
+  status: 'pending' | 'confirmed'
+  createdAt: string
 }

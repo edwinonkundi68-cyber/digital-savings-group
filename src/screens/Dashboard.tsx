@@ -7,15 +7,18 @@ type Props = {
   contributions: Contribution[]
   goal: number
   goalLabel: string
+  currentUserId: string
 }
 
 function initials(name: string) {
-  return name
-    .split(' ')
+  const letters = name
+    .trim()
+    .split(/\s+/)
     .map((word) => word[0])
     .join('')
     .slice(0, 2)
     .toUpperCase()
+  return letters || '?'
 }
 
 export default function Dashboard({
@@ -24,18 +27,24 @@ export default function Dashboard({
   contributions,
   goal,
   goalLabel,
+  currentUserId,
 }: Props) {
-  const total = contributions.reduce((sum, c) => sum + c.amount, 0)
+  const confirmed = contributions.filter((c) => c.status === 'confirmed')
+  const total = confirmed.reduce((sum, c) => sum + c.amount, 0)
   const percent = Math.min(100, Math.round((total / goal) * 100))
+
+  const myPending = contributions
+    .filter((c) => c.status === 'pending' && c.memberId === currentUserId)
+    .reduce((sum, c) => sum + c.amount, 0)
 
   const rows = members
     .map((m) => ({
       ...m,
-      paid: contributions
+      paid: confirmed
         .filter((c) => c.memberId === m.id)
         .reduce((sum, c) => sum + c.amount, 0),
     }))
-    .sort((a, b) => b.paid - a.paid)
+    .sort((a, b) => b.paid - a.paid || a.name.localeCompare(b.name))
 
   return (
     <div>
@@ -67,6 +76,18 @@ export default function Dashboard({
         </p>
       </section>
 
+      {myPending > 0 && (
+        <p className="mt-4 rounded-2xl bg-orange-50 p-4 font-bold text-brand-orange">
+          Waiting for the treasurer to confirm: {formatKES(myPending)}
+        </p>
+      )}
+
+      {total === 0 && (
+        <p className="mt-4 text-neutral-600">
+          No confirmed contributions yet. Add the first one.
+        </p>
+      )}
+
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
         <button
           onClick={() => goTo('contribute')}
@@ -94,7 +115,14 @@ export default function Dashboard({
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-green font-bold text-white">
               {initials(row.name)}
             </span>
-            <span className="flex-1 font-bold text-neutral-800">{row.name}</span>
+            <span className="flex-1 font-bold text-neutral-800">
+              {row.name}
+              {row.id === currentUserId && (
+                <span className="ml-2 text-sm font-normal text-neutral-500">
+                  (you)
+                </span>
+              )}
+            </span>
             <span className="font-bold text-brand-orange">
               {formatKES(row.paid)}
             </span>
