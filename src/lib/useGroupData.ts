@@ -7,6 +7,7 @@ export type GroupData = {
   contributions: Contribution[]
   goal: number
   goalLabel: string
+  isTreasurer: boolean
 }
 
 type State =
@@ -21,10 +22,11 @@ type ContributionRow = {
   amount: number
   status: string
   created_at: string
+  mpesa_code: string | null
 }
 
 async function fetchGroupData(): Promise<State> {
-  const [settings, directory, contribs] = await Promise.all([
+  const [settings, directory, contribs, treasurer] = await Promise.all([
     supabase
       .from('group_settings')
       .select('goal_amount, goal_label')
@@ -33,11 +35,13 @@ async function fetchGroupData(): Promise<State> {
     supabase.rpc('get_member_directory'),
     supabase
       .from('contributions')
-      .select('id, member_id, amount, status, created_at')
+      .select('id, member_id, amount, status, created_at, mpesa_code')
       .order('created_at', { ascending: false }),
+    supabase.rpc('is_treasurer'),
   ])
 
-    const failure = settings.error ?? directory.error ?? contribs.error
+  const failure =
+    settings.error ?? directory.error ?? contribs.error ?? treasurer.error
   if (failure) return { status: 'error', message: failure.message }
   if (!settings.data) {
     return { status: 'error', message: 'Group settings were not found' }
@@ -48,6 +52,7 @@ async function fetchGroupData(): Promise<State> {
     data: {
       goal: settings.data.goal_amount as number,
       goalLabel: settings.data.goal_label as string,
+      isTreasurer: treasurer.data === true,
       members: ((directory.data ?? []) as DirectoryRow[]).map((m) => ({
         id: m.id,
         name: m.full_name || 'Member',
@@ -58,6 +63,7 @@ async function fetchGroupData(): Promise<State> {
         amount: c.amount,
         status: c.status as Contribution['status'],
         createdAt: c.created_at,
+        mpesaCode: c.mpesa_code,
       })),
     },
   }

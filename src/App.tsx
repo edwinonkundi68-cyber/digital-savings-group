@@ -12,14 +12,15 @@ import { useGroupData } from './lib/useGroupData'
 function MemberArea({ userId }: { userId: string }) {
   const [screen, setScreen] = useState<Screen>('dashboard')
   const { state, reload } = useGroupData()
+  const needsData = screen !== 'history'
 
   return (
     <Layout screen={screen} goTo={setScreen}>
-      {screen === 'dashboard' && state.status === 'loading' && (
+      {needsData && state.status === 'loading' && (
         <p className="font-bold text-brand-green">Loading...</p>
       )}
 
-      {screen === 'dashboard' && state.status === 'error' && (
+      {needsData && state.status === 'error' && (
         <div>
           <p className="font-bold text-red-700">
             Could not load the group data: {state.message}
@@ -44,7 +45,17 @@ function MemberArea({ userId }: { userId: string }) {
         />
       )}
 
-      {screen === 'contribute' && <Contribute goTo={setScreen} />}
+      {screen === 'contribute' && state.status === 'ready' && (
+        <Contribute
+          goTo={setScreen}
+          members={state.data.members}
+          contributions={state.data.contributions}
+          currentUserId={userId}
+          isTreasurer={state.data.isTreasurer}
+          reload={reload}
+        />
+      )}
+
       {screen === 'history' && <History goTo={setScreen} />}
     </Layout>
   )

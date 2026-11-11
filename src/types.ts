@@ -11,4 +11,5 @@ export type Contribution = {
   amount: number
   status: 'pending' | 'confirmed'
   createdAt: string
+  mpesaCode: string | null
 }
