@@ -22,11 +22,11 @@ type ContributionRow = {
   amount: number
   status: string
   created_at: string
-  mpesa_code: string | null
 }
+type CodeRow = { contribution_id: number; mpesa_code: string }
 
 async function fetchGroupData(): Promise<State> {
-  const [settings, directory, contribs, treasurer] = await Promise.all([
+  const [settings, directory, contribs, codes, treasurer] = await Promise.all([
     supabase
       .from('group_settings')
       .select('goal_amount, goal_label')
@@ -35,17 +35,26 @@ async function fetchGroupData(): Promise<State> {
     supabase.rpc('get_member_directory'),
     supabase
       .from('contributions')
-      .select('id, member_id, amount, status, created_at, mpesa_code')
+      .select('id, member_id, amount, status, created_at')
       .order('created_at', { ascending: false }),
+    supabase.from('payment_codes').select('contribution_id, mpesa_code'),
     supabase.rpc('is_treasurer'),
   ])
 
   const failure =
-    settings.error ?? directory.error ?? contribs.error ?? treasurer.error
+    settings.error ??
+    directory.error ??
+    contribs.error ??
+    codes.error ??
+    treasurer.error
   if (failure) return { status: 'error', message: failure.message }
   if (!settings.data) {
     return { status: 'error', message: 'Group settings were not found' }
   }
+
+  const codeById = new Map<number, string>(
+    ((codes.data ?? []) as CodeRow[]).map((r) => [r.contribution_id, r.mpesa_code]),
+  )
 
   return {
     status: 'ready',
@@ -63,7 +72,7 @@ async function fetchGroupData(): Promise<State> {
         amount: c.amount,
         status: c.status as Contribution['status'],
         createdAt: c.created_at,
-        mpesaCode: c.mpesa_code,
+        mpesaCode: codeById.get(c.id) ?? null,
       })),
     },
   }

@@ -65,10 +65,9 @@ export default function Contribute({
     if (Object.keys(newErrors).length > 0) return
 
     setBusy(true)
-    const { error } = await supabase.from('contributions').insert({
-      member_id: currentUserId,
-      amount: value,
-      mpesa_code: cleanCode,
+        const { error } = await supabase.rpc('record_payment', {
+      p_amount: value,
+      p_code: cleanCode,
     })
     setBusy(false)
 
